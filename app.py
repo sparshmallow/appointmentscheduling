@@ -128,6 +128,7 @@ def archive_download(run_id: int):
         download_name=f"appt_sim_run_{run_id}.csv",
     )
 
+import os
 
 import os
 
