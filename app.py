@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import os
+
 import pandas as pd
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for
 
@@ -39,7 +41,9 @@ def build_config_from_form(form) -> dict:
     for pop in cfg["populations"].keys():
         key = f"pop_weight__{pop}"
         if key in form:
-            cfg["populations"][pop]["weight"] = _safe_float(form.get(key), cfg["populations"][pop]["weight"])
+            cfg["populations"][pop]["weight"] = _safe_float(
+                form.get(key), cfg["populations"][pop]["weight"]
+            )
 
     advanced_on = form.get("advanced_on") == "1"
     if advanced_on:
@@ -73,7 +77,6 @@ def run_sim():
         csv_text = df.to_csv(index=False)
         run_id = save_run(cfg, summ, csv_text)
 
-        # results page shows current run
         return render_template(
             "results.html",
             run_id=run_id,
@@ -100,7 +103,6 @@ def archive_run(run_id: int):
         flash("Run not found.", "warning")
         return redirect(url_for("archive"))
 
-    # For preview, read a small chunk of the CSV into a DF
     df = pd.read_csv(io.StringIO(run["csv_text"]))
     return render_template(
         "results.html",
@@ -128,9 +130,6 @@ def archive_download(run_id: int):
         download_name=f"appt_sim_run_{run_id}.csv",
     )
 
-import os
-
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
