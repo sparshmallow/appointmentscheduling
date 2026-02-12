@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Appointment Scheduling Simulation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .mini { font-size: 0.9rem; }
+    .sticky-actions { position: sticky; bottom: 0; background: white; padding-top: 12px; }
+    .help { color: #6c757d; font-size: 0.9rem; }
+    .info-icon { cursor: help; font-weight: 600; }
+  </style>
+</head>
+
+<body class="bg-light">
+  <div class="container py-4">
+    <h1 class="mb-2">Appointment Scheduling Simulation</h1>
+    <p class="text-muted mb-4">
+      Run a simulation to estimate appointment completion, patient effort (touchpoints), and time in the system.
+      Use <b>Advanced Settings</b> only if you want to change how scheduling behaves.
+    </p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{category}}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/run" id="simForm" class="card p-3 shadow-sm">
+      <h5 class="mb-3">Basic Settings</h5>
+
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">
+            Number of Patients to Simulate
+            <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Total number of patients in this run. Larger values are more stable but take longer.">ⓘ</span>
+          </label>
+          <input class="form-control" name="n_patients" type="number" min="1" value="{{ default_cfg.n_patients }}" />
+          <div class="form-text help">Example: 500–5000 depending on speed vs precision.</div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">
+            Average New Patients per Week
+            <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Controls demand. Higher values typically increase congestion and reduce access.">ⓘ</span>
+          </label>
+          <input class="form-control" name="lambda_per_week" type="number" step="0.01" min="0.01" value="{{ default_cfg.lambda_per_week }}" />
+          <div class="form-text help">Think of this as your average weekly demand rate.</div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">
+            Maximum Scheduling Attempts per Patient
+            <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="How many times a patient can retry scheduling before leaving the system.">ⓘ</span>
+          </label>
+          <input class="form-control" name="max_attempts" type="number" min="1" value="{{ default_cfg.max_attempts }}" />
+          <div class="form-text help">Higher values allow more retries (more effort/time).</div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">
+            Random Seed (for reproducibility)
+            <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Same seed + same inputs = identical results. Change it to see a different random outcome.">ⓘ</span>
+          </label>
+          <input class="form-control" name="seed" type="number" value="{{ default_cfg.seed }}" />
+          <div class="form-text help">Use a fixed seed for fair comparisons across scenarios.</div>
+        </div>
+      </div>
+
+      <hr class="my-4" />
+
+      <h5 class="mb-1">Population Mix</h5>
+      <div class="text-muted mini mb-3">
+        Define the relative size of each patient group. Values <b>do not need</b> to sum to 1 — they are automatically normalized.
+        <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Example: 1,1,1,1 means equal mix. 2,1,1,0 means Population 1 is 50% of patients.">ⓘ</span>
+      </div>
+
+      <div class="row g-3">
+        {% for pop, pdata in default_cfg.populations.items() %}
+          <div class="col-md-3">
+            <label class="form-label">
+              Proportion of {{ pop }} Patients
+              <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Relative weight for this population in the simulated patient mix.">ⓘ</span>
+            </label>
+            <input
+              class="form-control"
+              name="pop_weight__{{ pop }}"
+              type="number"
+              step="0.001"
+              min="0"
+              value="{{ pdata.weight }}"
+            />
+            <div class="form-text help">Higher weight → more simulated patients from this group.</div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <hr class="my-4" />
+
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <button class="btn btn-primary" type="submit">Run simulation</button>
+          <span class="text-muted ms-2">A results page will open after the run finishes.</span>
+        </div>
+
+        <button class="btn btn-outline-secondary" type="button" id="toggleAdvanced">
+          Advanced Settings ▼
+        </button>
+      </div>
+
+      <!-- Advanced block -->
+      <div id="advancedBlock" class="mt-4" style="display:none;">
+        <div class="alert alert-info mb-3">
+          <b>Advanced Settings</b> control how scheduling behaves (method mix, success rates, timing assumptions).
+          <div class="mini mt-1">
+            Validation rules: method probabilities must sum to 1 per population, and visit-type probabilities must sum to 1 per population.
+          </div>
+        </div>
+
+        <div id="advError" class="alert alert-danger" style="display:none;"></div>
+
+        <input type="hidden" name="advanced_on" id="advanced_on" value="0" />
+
+        <!-- Hidden fields posted to Flask (JSON) -->
+        <input type="hidden" name="avg_touchpoints_json" id="avg_touchpoints_json" />
+        <input type="hidden" name="allocated_minutes_json" id="allocated_minutes_json" />
+        <input type="hidden" name="population_params_json" id="population_params_json" />
+
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <div class="card p-3 shadow-sm">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="m-0">
+                  Average Patient Touchpoints by Scheduling Method
+                  <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Touchpoints are interactions needed to complete scheduling (calls, messages, portal actions, etc.).">ⓘ</span>
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" type="button" id="resetTouchpoints">Reset</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle" id="touchpointsTable">
+                  <thead>
+                    <tr>
+                      <th style="width:60%;">Scheduling Method</th>
+                      <th style="width:40%;">Average touchpoints</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="text-muted mini">Used globally across all populations.</div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="card p-3 shadow-sm">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="m-0">
+                  Appointment Duration by Visit Type (minutes)
+                  <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Provider time reserved when an appointment of this type is scheduled.">ⓘ</span>
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" type="button" id="resetAlloc">Reset</button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle" id="allocTable">
+                  <thead>
+                    <tr>
+                      <th style="width:60%;">Visit type</th>
+                      <th style="width:40%;">Minutes reserved</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="text-muted mini">Applied when a patient draws a visit type.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-3 shadow-sm mt-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="m-0">
+              Population-Specific Scheduling Behavior
+              <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Edit method mix, success probabilities, and timing assumptions for each population group.">ⓘ</span>
+            </h6>
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="resetPopParams">Reset</button>
+          </div>
+
+          <div class="text-muted mini mt-1">
+            Tip: Use <b>Probability of Use</b> to represent how often each scheduling pathway is used for that population.
+            <br/>
+            The timing fields (<span class="mono">mu</span>, <span class="mono">sigma</span>) control the average and variability of delays (advanced users).
+          </div>
+
+          <div class="mt-3" id="popAccordion"></div>
+
+          <div class="sticky-actions mt-3 d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm" type="button" id="validateAdvanced">Validate advanced inputs</button>
+            <span id="advOk" class="text-success mini align-self-center" style="display:none;">✓ Looks good</span>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const DEFAULT_CFG = {{ default_cfg | tojson }};
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Enable tooltips globally
+    document.addEventListener("DOMContentLoaded", () => {
+      const els = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      els.forEach(el => new bootstrap.Tooltip(el));
+    });
+  </script>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
