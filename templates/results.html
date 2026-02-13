@@ -43,6 +43,68 @@
         </div>
       </div>
     </div>
+    <h4 class="mb-2">KPI Dashboard</h4>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-4">
+    <div class="card p-3 shadow-sm h-100">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted">Overall completion rate</div>
+        <span class="badge bg-secondary">KPI</span>
+      </div>
+      <div style="height: 260px;" class="mt-2">
+        <canvas id="kpiCompletionGauge"></canvas>
+      </div>
+      <div class="text-muted small mt-2">
+        Share of patients who successfully scheduled <i>and</i> completed an appointment.
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card p-3 shadow-sm h-100">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted">Completion rate by population</div>
+        <span class="badge bg-secondary">Segmented</span>
+      </div>
+      <div style="height: 300px;" class="mt-2">
+        <canvas id="kpiCompletionByPop"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card p-3 shadow-sm">
+      <div class="text-muted">Avg touchpoints by population</div>
+      <div style="height: 280px;" class="mt-2">
+        <canvas id="kpiTouchpointsByPop"></canvas>
+      </div>
+      <div class="text-muted small mt-2">
+        Touchpoints ≈ number of interactions required to schedule (calls, messages, portal actions).
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card p-3 shadow-sm">
+      <div class="text-muted">Avg total time (days) by population</div>
+      <div style="height: 280px;" class="mt-2">
+        <canvas id="kpiTimeByPop"></canvas>
+      </div>
+      <div class="text-muted small mt-2">
+        Total time combines time-to-schedule and time-to-completion across attempts.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--
+   B) Near the VERY BOTTOM of results.html (right before </body>),
+      paste these 3 script tags (and remove any conflicting ones if needed).
+-->
+
 
     <h4 class="mb-2">By population</h4>
     <div class="card p-3 shadow-sm mb-4">
@@ -95,5 +157,11 @@
       <div class="text-muted mt-2">Download CSV for full output.</div>
     </div>
   </div>
+  <script>
+    const SUMMARY = {{ summary | tojson }};
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/static/results.js"></script>
 </body>
 </html>
+
