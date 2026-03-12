@@ -115,7 +115,6 @@
         </button>
       </div>
 
-      <!-- Advanced block -->
       <div id="advancedBlock" class="mt-4" style="display:none;">
         <div class="alert alert-info mb-3">
           <b>Advanced Settings</b> control how scheduling behaves (method mix, success rates, timing assumptions).
@@ -128,7 +127,6 @@
 
         <input type="hidden" name="advanced_on" id="advanced_on" value="0" />
 
-        <!-- Hidden fields posted to Flask (JSON) -->
         <input type="hidden" name="avg_touchpoints_json" id="avg_touchpoints_json" />
         <input type="hidden" name="allocated_minutes_json" id="allocated_minutes_json" />
         <input type="hidden" name="population_params_json" id="population_params_json" />
@@ -215,7 +213,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Enable tooltips globally
     document.addEventListener("DOMContentLoaded", () => {
       const els = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
       els.forEach(el => new bootstrap.Tooltip(el));
