@@ -5,11 +5,11 @@ import json
 import pandas as pd
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for
 
-from simulation import DEFAULT_CONFIG, simulate, summarize
+from simulation import DEFAULT_CONFIG, simulate, summarize, run_sensitivity_analysis
 from db import init_db, save_run, list_runs, get_run
 
 app = Flask(__name__)
-app.secret_key = "dev-secret-change-me"  # change for deployment
+app.secret_key = "dev-secret-change-me"  
 
 init_db()
 
@@ -29,7 +29,7 @@ def _safe_int(x, default=0):
 
 
 def build_config_from_form(form) -> dict:
-    cfg = json.loads(json.dumps(DEFAULT_CONFIG))  # deep copy
+    cfg = json.loads(json.dumps(DEFAULT_CONFIG))  
 
     cfg["n_patients"] = _safe_int(form.get("n_patients"), cfg["n_patients"])
     cfg["seed"] = _safe_int(form.get("seed"), cfg["seed"])
@@ -72,7 +72,6 @@ def run_sim():
         csv_text = df.to_csv(index=False)
         run_id = save_run(cfg, summ, csv_text)
 
-        # Redirect to GET route (prevents duplicate runs)
         return redirect(url_for("archive_run", run_id=run_id))
 
     except Exception as e:
@@ -94,12 +93,21 @@ def archive_run(run_id: int):
         flash("Run not found.", "warning")
         return redirect(url_for("archive"))
 
-    # For preview, read a small chunk of the CSV into a DF
     df = pd.read_csv(io.StringIO(run["csv_text"]))
+    sensitivity = run_sensitivity_analysis(run["config"])
+
+    baseline = next(s for s in sensitivity if s["category"] == "Baseline")
+
+    for s in sensitivity:
+        s["delta_completion"] = s["completed_rate"] - baseline["completed_rate"]
+        s["delta_touchpoints"] = s["avg_touchpoints"] - baseline["avg_touchpoints"]
+        s["delta_time"] = s["avg_total_time"] - baseline["avg_total_time"]
+
     return render_template(
         "results.html",
         run_id=run_id,
         summary=run["summary"],
+        sensitivity=sensitivity,
         preview=df.head(25).to_dict(orient="records"),
         columns=list(df.columns),
         archived=True,
