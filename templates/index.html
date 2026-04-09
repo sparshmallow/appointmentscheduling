@@ -57,6 +57,15 @@
 
         <div class="col-md-3">
           <label class="form-label">
+            Daily Appointment Capacity
+            <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Number of appointment slots available each day. This input drives the access queue and delay results.">ⓘ</span>
+          </label>
+          <input class="form-control" name="daily_capacity" type="number" min="1" value="{{ default_cfg.access.daily_capacity }}" />
+          <div class="form-text help">Use this to test how changes in daily availability affect queue growth and access delay.</div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">
             Maximum Scheduling Attempts per Patient
             <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="How many times a patient can retry scheduling before leaving the system.">ⓘ</span>
           </label>
@@ -71,6 +80,46 @@
           </label>
           <input class="form-control" name="seed" type="number" value="{{ default_cfg.seed }}" />
           <div class="form-text help">Use a fixed seed for fair comparisons across scenarios.</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          <div class="border rounded p-3 bg-white">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+              <div>
+                <div class="fw-semibold">
+                  Capacity Search Range
+                  <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Optional range of capacity values tested in the recommendation section. Leave blank to let the model choose a search range automatically around the baseline capacity.">ⓘ</span>
+                </div>
+                <div class="form-text mt-0">Optional. Define the minimum, maximum, and step size for the capacity values tested in the recommendation section. Leave blank to use the automatic range around the baseline capacity.</div>
+              </div>
+            </div>
+            <div class="row g-3 mt-1">
+              <div class="col-md-4">
+                <label class="form-label">
+                  Minimum tested capacity
+                  <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Lowest daily capacity value to test in the recommendation search.">ⓘ</span>
+                </label>
+                <input class="form-control" name="capacity_search_min" type="number" min="1" placeholder="Auto" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">
+                  Maximum tested capacity
+                  <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Highest daily capacity value to test in the recommendation search.">ⓘ</span>
+                </label>
+                <input class="form-control" name="capacity_search_max" type="number" min="1" placeholder="Auto" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">
+                  Step size
+                  <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="How much the tested capacity increases between scenarios. Example: a step of 2 tests 20, 22, 24, and so on.">ⓘ</span>
+                </label>
+                <input class="form-control" name="capacity_search_step" type="number" min="1" placeholder="Auto" />
+              </div>
+            </div>
+            <div class="form-text help mt-2">Example: min = 20, max = 40, step = 2 will test capacities 20, 22, 24, ..., 40. The baseline capacity is still included even if it does not fall exactly on the step pattern.</div>
+          </div>
         </div>
       </div>
 
@@ -115,7 +164,6 @@
         </button>
       </div>
 
-      <!-- Advanced block -->
       <div id="advancedBlock" class="mt-4" style="display:none;">
         <div class="alert alert-info mb-3">
           <b>Advanced Settings</b> control how scheduling behaves (method mix, success rates, timing assumptions).
@@ -128,7 +176,6 @@
 
         <input type="hidden" name="advanced_on" id="advanced_on" value="0" />
 
-        <!-- Hidden fields posted to Flask (JSON) -->
         <input type="hidden" name="avg_touchpoints_json" id="avg_touchpoints_json" />
         <input type="hidden" name="allocated_minutes_json" id="allocated_minutes_json" />
         <input type="hidden" name="population_params_json" id="population_params_json" />
@@ -147,8 +194,14 @@
                 <table class="table table-sm align-middle" id="touchpointsTable">
                   <thead>
                     <tr>
-                      <th style="width:60%;">Scheduling Method</th>
-                      <th style="width:40%;">Average touchpoints</th>
+                      <th style="width:60%;">
+                        Scheduling Method
+                        <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="The scheduling channel or workflow being modeled, such as phone, portal, or referral-based scheduling.">ⓘ</span>
+                      </th>
+                      <th style="width:40%;">
+                        Average touchpoints
+                        <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Average number of interactions needed to successfully schedule through this method.">ⓘ</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -171,8 +224,14 @@
                 <table class="table table-sm align-middle" id="allocTable">
                   <thead>
                     <tr>
-                      <th style="width:60%;">Visit type</th>
-                      <th style="width:40%;">Minutes reserved</th>
+                      <th style="width:60%;">
+                        Visit type
+                        <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="The category of appointment being scheduled, such as consult, follow-up, or procedure.">ⓘ</span>
+                      </th>
+                      <th style="width:40%;">
+                        Minutes reserved
+                        <span class="ms-1 info-icon" data-bs-toggle="tooltip" title="Amount of provider time blocked for this visit type when it is booked.">ⓘ</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -215,7 +274,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Enable tooltips globally
     document.addEventListener("DOMContentLoaded", () => {
       const els = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
       els.forEach(el => new bootstrap.Tooltip(el));
